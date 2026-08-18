@@ -42,12 +42,18 @@ npm run dev
 Then open http://localhost:3000.
 
 ```bash
-npm run build   # production build
-npm start       # serve the production build
-npm run lint    # eslint
+npm run build      # production build
+npm start          # serve the production build
+npm run lint       # eslint
+npm run typecheck  # tsc --noEmit
 ```
 
 Requires Node 20 or newer.
+
+CI runs `typecheck`, `lint` and `build` as three separate GitHub Actions jobs on
+every pull request and every push to `main`, so each reports as its own check
+(`TypeCheck`, `Lint`, `Build`) for branch protection or deployment promotion
+requirements to match against.
 
 ## Deploying to Vercel
 

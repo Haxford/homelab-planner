@@ -16,12 +16,15 @@ export function formatCurrency(value: number, currency: Settings["currency"], fr
 }
 
 export function formatWatts(watts: number) {
-  if (watts >= 1000) return `${(watts / 1000).toFixed(2)} kW`;
-  return `${Math.round(watts)} W`;
+  const value = Number.isFinite(watts) ? watts : 0;
+  if (value >= 1000) return `${(value / 1000).toFixed(2)} kW`;
+  return `${Math.round(value)} W`;
 }
 
 export function formatNumber(value: number, maximumFractionDigits = 1) {
-  return new Intl.NumberFormat("en-GB", { maximumFractionDigits }).format(value);
+  return new Intl.NumberFormat("en-GB", { maximumFractionDigits }).format(
+    Number.isFinite(value) ? value : 0,
+  );
 }
 
 export function formatStorage(gb: number) {

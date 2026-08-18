@@ -1,7 +1,9 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import type { Plan, Settings } from "@/lib/types";
+import { DEVICE_CATEGORIES } from "@/lib/catalog/devices";
+import { SERVICE_CATEGORIES } from "@/lib/catalog/services";
+import type { Device, DeviceCategory, Plan, Service, ServiceCategory, Settings } from "@/lib/types";
 import { newId } from "@/lib/id";
 
 const STORAGE_KEY = "homelab-planner.plan";
@@ -100,6 +102,82 @@ const asArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T
 const asNumber = (value: unknown, fallback: number) =>
   typeof value === "number" && Number.isFinite(value) ? value : fallback;
 
+const asString = (value: unknown, fallback: string) =>
+  typeof value === "string" && value.trim() ? value : fallback;
+
+/** Optional numeric spec fields: keep a real number, otherwise drop the field. */
+const asOptionalNumber = (value: unknown) =>
+  typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;
+
+const DEVICE_CATEGORY_IDS = new Set(DEVICE_CATEGORIES.map((meta) => meta.id));
+const SERVICE_CATEGORY_IDS = new Set(SERVICE_CATEGORIES.map((meta) => meta.id));
+
+/**
+ * Custom hardware from an imported file feeds straight into power, cost and
+ * capacity sums, so every number it contributes has to be a real number. A
+ * device missing `powerMaxW` would otherwise turn every total on the dashboard
+ * into NaN. Entries without a usable id are dropped, since nothing can
+ * reference them.
+ */
+function sanitiseDevice(raw: unknown): Device | null {
+  if (!raw || typeof raw !== "object") return null;
+  const input = raw as Partial<Device>;
+  const id = typeof input.id === "string" ? input.id.trim() : "";
+  if (!id) return null;
+
+  const idleW = Math.max(0, asNumber(input.powerIdleW, 0));
+
+  return {
+    id,
+    name: asString(input.name, id),
+    vendor: asString(input.vendor, "Custom"),
+    category: DEVICE_CATEGORY_IDS.has(input.category as DeviceCategory)
+      ? (input.category as DeviceCategory)
+      : "accessory",
+    rackUnits: Math.max(1, Math.round(asNumber(input.rackUnits, 1))),
+    width: input.width === 0.5 ? 0.5 : 1,
+    cpu: typeof input.cpu === "string" ? input.cpu : undefined,
+    cores: asOptionalNumber(input.cores),
+    threads: asOptionalNumber(input.threads),
+    ramGb: asOptionalNumber(input.ramGb),
+    maxRamGb: asOptionalNumber(input.maxRamGb),
+    storageTb: asOptionalNumber(input.storageTb),
+    driveBays: asOptionalNumber(input.driveBays),
+    ports: asOptionalNumber(input.ports),
+    portSpeed: asOptionalNumber(input.portSpeed),
+    powerIdleW: idleW,
+    // Peak below idle would make the load-factor blend run backwards.
+    powerMaxW: Math.max(idleW, asNumber(input.powerMaxW, idleW)),
+    price: Math.max(0, asNumber(input.price, 0)),
+    notes: typeof input.notes === "string" ? input.notes : undefined,
+    builtIn: false,
+  };
+}
+
+function sanitiseService(raw: unknown): Service | null {
+  if (!raw || typeof raw !== "object") return null;
+  const input = raw as Partial<Service>;
+  const id = typeof input.id === "string" ? input.id.trim() : "";
+  if (!id) return null;
+
+  return {
+    id,
+    name: asString(input.name, id),
+    category: SERVICE_CATEGORY_IDS.has(input.category as ServiceCategory)
+      ? (input.category as ServiceCategory)
+      : "productivity",
+    cpuCores: Math.max(0, asNumber(input.cpuCores, 0)),
+    ramGb: Math.max(0, asNumber(input.ramGb, 0)),
+    storageGb: Math.max(0, asNumber(input.storageGb, 0)),
+    ports: asArray<unknown>(input.ports)
+      .map((port) => Number(port))
+      .filter((port) => Number.isInteger(port) && port > 0 && port < 65536),
+    image: typeof input.image === "string" ? input.image : undefined,
+    notes: typeof input.notes === "string" ? input.notes : undefined,
+    builtIn: false,
+  };
+}
+
 /**
  * Coerce anything that claims to be a plan into a usable one. Imported files
  * may be hand-edited or come from an older version, so every field is checked
@@ -133,8 +211,12 @@ export function sanitisePlan(raw: unknown): Plan {
         startU: Math.max(1, Math.round(asNumber(item.startU, 1))),
       })),
     })),
-    customDevices: asArray(input.customDevices),
-    customServices: asArray(input.customServices),
+    customDevices: asArray<unknown>(input.customDevices)
+      .map(sanitiseDevice)
+      .filter((device): device is Device => device !== null),
+    customServices: asArray<unknown>(input.customServices)
+      .map(sanitiseService)
+      .filter((service): service is Service => service !== null),
     serviceInstances: asArray<Plan["serviceInstances"][number]>(input.serviceInstances).map((instance) => ({
       ...instance,
       id: instance.id ?? newId("svc"),

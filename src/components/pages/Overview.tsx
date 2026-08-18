@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo } from "react";
 import {
   AlertTriangle,
@@ -23,7 +22,7 @@ import {
   usedUnits,
 } from "@/lib/selectors";
 import { usePlan } from "@/lib/store";
-import { Badge, Button, Card, EmptyState, Meter, PageHeader, Stat } from "@/components/ui";
+import { Badge, ButtonLink, Card, EmptyState, Meter, PageHeader, Stat } from "@/components/ui";
 
 export function Overview() {
   const { plan } = usePlan();
@@ -46,12 +45,10 @@ export function Overview() {
           title="Your plan is empty"
           description="Add a rack, drop some hardware into it, and this page will fill in with capacity, power and cost."
           action={
-            <Link href="/rack">
-              <Button variant="primary">
-                Open the rack builder
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+            <ButtonLink href="/rack" variant="primary">
+              Open the rack builder
+              <ArrowRight className="h-4 w-4" />
+            </ButtonLink>
           }
         />
       </>
@@ -64,12 +61,10 @@ export function Overview() {
         title="Overview"
         description={`${plan.name} — ${pluralise(totals.rackCount, "rack")}, ${pluralise(totals.deviceCount, "device")}.`}
         actions={
-          <Link href="/rack">
-            <Button variant="primary">
-              Rack builder
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+          <ButtonLink href="/rack" variant="primary">
+            Rack builder
+            <ArrowRight className="h-4 w-4" />
+          </ButtonLink>
         }
       />
 

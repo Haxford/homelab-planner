@@ -9,6 +9,7 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
+import Link from "next/link";
 import { X } from "lucide-react";
 
 export function cx(...classes: (string | false | null | undefined)[]) {
@@ -128,37 +129,64 @@ export function EmptyState({
 
 // ----------------------------------------------------------------- controls
 
+type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+type ButtonSize = "sm" | "md";
+
+const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
+  primary: "bg-emerald-500 text-emerald-950 hover:bg-emerald-400 border-emerald-400",
+  secondary: "bg-surface-2 text-zinc-200 hover:bg-edge border-edge-strong",
+  ghost: "bg-transparent text-zinc-400 hover:text-zinc-100 hover:bg-surface-2 border-transparent",
+  danger: "bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 border-rose-500/40",
+};
+
+const BUTTON_SIZES: Record<ButtonSize, string> = {
+  sm: "px-2.5 py-1 text-xs gap-1.5",
+  md: "px-3 py-1.5 text-sm gap-2",
+};
+
+/** Shared so a link can look like a button without nesting one inside it. */
+export function buttonClass(variant: ButtonVariant = "secondary", size: ButtonSize = "md", className?: string) {
+  return cx(
+    "inline-flex items-center justify-center rounded-lg border font-medium transition-colors",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60",
+    "disabled:cursor-not-allowed disabled:opacity-40",
+    BUTTON_VARIANTS[variant],
+    BUTTON_SIZES[size],
+    className,
+  );
+}
+
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "ghost" | "danger";
-  size?: "sm" | "md";
+  variant?: ButtonVariant;
+  size?: ButtonSize;
 };
 
 export function Button({ variant = "secondary", size = "md", className, ...props }: ButtonProps) {
-  const variants = {
-    primary: "bg-emerald-500 text-emerald-950 hover:bg-emerald-400 border-emerald-400",
-    secondary: "bg-surface-2 text-zinc-200 hover:bg-edge border-edge-strong",
-    ghost: "bg-transparent text-zinc-400 hover:text-zinc-100 hover:bg-surface-2 border-transparent",
-    danger: "bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 border-rose-500/40",
-  }[variant];
+  return <button type="button" className={buttonClass(variant, size, className)} {...props} />;
+}
 
-  const sizes = {
-    sm: "px-2.5 py-1 text-xs gap-1.5",
-    md: "px-3 py-1.5 text-sm gap-2",
-  }[size];
-
+/**
+ * A link styled as a button. Wrapping a <Button> in a <Link> would nest a
+ * <button> inside an <a>, which is invalid and gives assistive technology two
+ * overlapping controls to announce.
+ */
+export function ButtonLink({
+  href,
+  variant = "secondary",
+  size = "md",
+  className,
+  children,
+}: {
+  href: string;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
-    <button
-      type="button"
-      className={cx(
-        "inline-flex items-center justify-center rounded-lg border font-medium transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60",
-        "disabled:cursor-not-allowed disabled:opacity-40",
-        variants,
-        sizes,
-        className,
-      )}
-      {...props}
-    />
+    <Link href={href} className={buttonClass(variant, size, className)}>
+      {children}
+    </Link>
   );
 }
 
