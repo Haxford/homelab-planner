@@ -55,9 +55,19 @@ The app is a static Next.js build with no server-side data, no environment
 variables and no external services, so it deploys as-is:
 
 1. Import the repository at [vercel.com/new](https://vercel.com/new).
-2. Accept the detected defaults — Vercel recognises Next.js and needs no further
-   configuration.
+2. Accept the detected defaults.
 3. Deploy.
+
+`vercel.json` pins the framework to `nextjs`, so the build works even on a
+project that was created before this repository had an app in it — Vercel would
+otherwise fall back to its "Other" preset and fail with *No Output Directory
+named "public" found*.
+
+If you hit that error on an existing project, the `vercel.json` above fixes it
+on the next deploy. Should it persist, the project has an explicit override to
+clear: **Settings → Build & Deployment → Build & Development Settings**, set
+Framework Preset to *Next.js* and switch the Output Directory back to its
+default.
 
 Every route is prerendered as static content, so it runs comfortably inside a
 free hobby project.
