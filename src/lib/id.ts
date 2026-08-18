@@ -1,0 +1,11 @@
+/**
+ * Short unique id for plan entities. crypto.randomUUID is available in every
+ * browser we target, but a plan can also be built during SSR, so fall back.
+ */
+export function newId(prefix: string): string {
+  const random =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+  return `${prefix}_${random}`;
+}
