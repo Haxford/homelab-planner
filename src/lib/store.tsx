@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import type { Plan, Settings } from "@/lib/types";
+import type { Device, Plan, Reservation, Service, Settings, Subnet } from "@/lib/types";
 import { newId } from "@/lib/id";
 
 const STORAGE_KEY = "homelab-planner.plan";
@@ -95,10 +95,25 @@ export function createEmptyPlan(): Plan {
   };
 }
 
-const asArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
+const asObjects = <T,>(value: unknown): T[] =>
+  Array.isArray(value)
+    ? (value.filter((entry) => entry !== null && typeof entry === "object") as T[])
+    : [];
 
 const asNumber = (value: unknown, fallback: number) =>
   typeof value === "number" && Number.isFinite(value) ? value : fallback;
+
+const asOptionalNumber = (value: unknown) =>
+  typeof value === "number" && Number.isFinite(value) ? value : undefined;
+
+const asString = (value: unknown, fallback: string) => (typeof value === "string" ? value : fallback);
+
+const asOptionalString = (value: unknown) => (typeof value === "string" ? value : undefined);
+
+const asPortList = (value: unknown): number[] =>
+  Array.isArray(value)
+    ? value.map((port) => Number(port)).filter((port) => Number.isInteger(port) && port > 0 && port < 65536)
+    : [];
 
 /**
  * Coerce anything that claims to be a plan into a usable one. Imported files
@@ -121,33 +136,89 @@ export function sanitisePlan(raw: unknown): Plan {
       hoursPerDay: Math.min(24, Math.max(0, asNumber(settings.hoursPerDay, DEFAULT_SETTINGS.hoursPerDay))),
       loadFactor: Math.min(1, Math.max(0, asNumber(settings.loadFactor, DEFAULT_SETTINGS.loadFactor))),
     },
-    racks: asArray<Plan["racks"][number]>(input.racks).map((rack) => ({
+    racks: asObjects<Plan["racks"][number]>(input.racks).map((rack) => ({
       ...rack,
-      id: rack.id ?? newId("rack"),
-      name: rack.name ?? "Rack",
+      id: asString(rack.id, newId("rack")),
+      name: asString(rack.name, "Rack"),
       heightU: Math.max(1, Math.round(asNumber(rack.heightU, 12))),
       price: asNumber(rack.price, 0),
-      items: asArray<Plan["racks"][number]["items"][number]>(rack.items).map((item) => ({
+      notes: asOptionalString(rack.notes),
+      items: asObjects<Plan["racks"][number]["items"][number]>(rack.items).map((item) => ({
         ...item,
-        id: item.id ?? newId("item"),
+        id: asString(item.id, newId("item")),
+        deviceId: asString(item.deviceId, ""),
         startU: Math.max(1, Math.round(asNumber(item.startU, 1))),
+        side: item.side === "left" || item.side === "right" ? item.side : undefined,
+        label: asOptionalString(item.label),
       })),
     })),
-    customDevices: asArray(input.customDevices),
-    customServices: asArray(input.customServices),
-    serviceInstances: asArray<Plan["serviceInstances"][number]>(input.serviceInstances).map((instance) => ({
-      ...instance,
-      id: instance.id ?? newId("svc"),
-      hostItemId: instance.hostItemId ?? null,
+    customDevices: asObjects<Device>(input.customDevices).map((device) => ({
+      ...device,
+      id: asString(device.id, newId("device")),
+      name: asString(device.name, "Unnamed device"),
+      vendor: asString(device.vendor, "Custom"),
+      category: asString(device.category, "accessory") as Device["category"],
+      rackUnits: Math.max(1, Math.round(asNumber(device.rackUnits, 1))),
+      width: device.width === 0.5 ? 0.5 : 1,
+      cpu: asOptionalString(device.cpu),
+      cores: asOptionalNumber(device.cores),
+      threads: asOptionalNumber(device.threads),
+      ramGb: asOptionalNumber(device.ramGb),
+      maxRamGb: asOptionalNumber(device.maxRamGb),
+      storageTb: asOptionalNumber(device.storageTb),
+      driveBays: asOptionalNumber(device.driveBays),
+      ports: asOptionalNumber(device.ports),
+      portSpeed: asOptionalNumber(device.portSpeed),
+      powerIdleW: Math.max(0, asNumber(device.powerIdleW, 0)),
+      powerMaxW: Math.max(0, asNumber(device.powerMaxW, 0)),
+      price: Math.max(0, asNumber(device.price, 0)),
+      notes: asOptionalString(device.notes),
     })),
-    subnets: asArray(input.subnets),
-    reservations: asArray(input.reservations),
-    wishlist: asArray<Plan["wishlist"][number]>(input.wishlist).map((item) => ({
+    customServices: asObjects<Service>(input.customServices).map((service) => ({
+      ...service,
+      id: asString(service.id, newId("service")),
+      name: asString(service.name, "Unnamed service"),
+      category: asString(service.category, "productivity") as Service["category"],
+      cpuCores: Math.max(0, asNumber(service.cpuCores, 0)),
+      ramGb: Math.max(0, asNumber(service.ramGb, 0)),
+      storageGb: Math.max(0, asNumber(service.storageGb, 0)),
+      ports: asPortList(service.ports),
+      image: asOptionalString(service.image),
+      notes: asOptionalString(service.notes),
+    })),
+    serviceInstances: asObjects<Plan["serviceInstances"][number]>(input.serviceInstances).map((instance) => ({
+      ...instance,
+      id: asString(instance.id, newId("svc")),
+      serviceId: asString(instance.serviceId, ""),
+      hostItemId: typeof instance.hostItemId === "string" ? instance.hostItemId : null,
+      label: asOptionalString(instance.label),
+    })),
+    subnets: asObjects<Subnet>(input.subnets).map((subnet) => ({
+      ...subnet,
+      id: asString(subnet.id, newId("net")),
+      name: asString(subnet.name, "Subnet"),
+      cidr: asString(subnet.cidr, ""),
+      vlanId: asOptionalNumber(subnet.vlanId),
+      gateway: asOptionalString(subnet.gateway),
+      notes: asOptionalString(subnet.notes),
+    })),
+    reservations: asObjects<Reservation>(input.reservations).map((reservation) => ({
+      ...reservation,
+      id: asString(reservation.id, newId("res")),
+      subnetId: asString(reservation.subnetId, ""),
+      ip: asString(reservation.ip, ""),
+      hostname: asString(reservation.hostname, ""),
+      rackItemId: typeof reservation.rackItemId === "string" ? reservation.rackItemId : null,
+      notes: asOptionalString(reservation.notes),
+    })),
+    wishlist: asObjects<Plan["wishlist"][number]>(input.wishlist).map((item) => ({
       ...item,
-      id: item.id ?? newId("wish"),
+      id: asString(item.id, newId("wish")),
+      name: asString(item.name, ""),
       quantity: Math.max(1, Math.round(asNumber(item.quantity, 1))),
-      price: asNumber(item.price, 0),
+      price: Math.max(0, asNumber(item.price, 0)),
       purchased: Boolean(item.purchased),
+      notes: asOptionalString(item.notes),
     })),
   };
 
