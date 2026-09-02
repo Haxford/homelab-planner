@@ -173,9 +173,9 @@ export function Overview() {
                       </Badge>
                     </p>
                     <p className="mt-0.5 text-[0.7rem] text-zinc-500">
-                      {pluralise(host.services.length, "service")} need{" "}
-                      {formatNumber(host.used.cores)} cores, {formatNumber(host.used.ramGb)} GB RAM and{" "}
-                      {formatStorage(host.used.storageGb)}.
+                      {pluralise(host.services.length, "service")}{" "}
+                      {host.services.length === 1 ? "needs" : "need"} {formatNumber(host.used.cores)} cores,{" "}
+                      {formatNumber(host.used.ramGb)} GB RAM and {formatStorage(host.used.storageGb)}.
                     </p>
                   </div>
                 </li>
