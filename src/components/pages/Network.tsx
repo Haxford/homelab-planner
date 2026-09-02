@@ -191,7 +191,10 @@ export function Network() {
                           value={subnet.vlanId ?? ""}
                           onChange={(event) =>
                             updateSubnet(subnet.id, {
-                              vlanId: event.target.value === "" ? undefined : Number(event.target.value),
+                              vlanId:
+                                event.target.value === ""
+                                  ? undefined
+                                  : Math.min(4094, Math.max(1, Number(event.target.value) || 1)),
                             })
                           }
                           aria-label="VLAN id"
